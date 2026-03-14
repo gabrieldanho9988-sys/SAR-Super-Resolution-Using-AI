@@ -1,60 +1,49 @@
-# SAR Super Resolution using AI
+# SAR Image Super-Resolution using Deep Residual Learning
 
-## Project Description
-The goal of this project is to enhance the spatial resolution of Synthetic Aperture Radar (SAR) imagery using Deep Learning techniques. SAR images are notoriously difficult to process due to inherent speckle noise and complex geometric properties (like layover and shadowing). This project implements Super-Resolution models to reconstruct high-frequency spatial details from low-resolution SAR inputs, aiming to improve both visual quality and subsequent image analysis capabilities
+### Project Overview
+This project implements a Deep Learning pipeline to enhance the spatial resolution of **Synthetic Aperture Radar (SAR)** imagery. SAR data is notoriously difficult to process due to speckle noise and complex geometry. This project utilizes a **Very Deep Super Resolution (VDSR)** inspired architecture with custom **Residual Blocks** to reconstruct high-frequency spatial details from low-resolution inputs. The data is sourced from the Capella Space Open Data catalog (IEEE Data Contest collection) and retrieved dynamically via the STAC API.
 
-## Dataset
-The data is sourced from the Capella Space Open Data catalog, specifically the IEEE Data Contest collection.
+---
 
-We utilize high-resolution GEO (Geographically Geocoded) SAR imagery in TIFF format.
+### Technical Highlights
+* **Custom Architecture:** A 10-layer Deep Residual Network featuring **Feature Scaling** (factor of 0.1) within residual blocks to stabilize deep gradient flow.
+* **SAR-Physics Optimized Loss:** Replaced standard MSE with a weighted combination of **L1 Loss** (for sharp edges) and **SSIM (Structural Similarity)** to preserve the physical geometry of radar returns.
+* **Dense Data Engineering:** Implemented high-density patch extraction with a 50% overlap (stride 32) to quadruple the training dataset while maintaining data integrity.
+* **Fully Convolutional Inference:** The model supports **Full-Scene Inference**, allowing it to process entire SAR geographic expanses of any size natively without tiling artifacts.
 
-The data is retrieved dynamically via the SpatioTemporal Asset Catalog (STAC) API using pystac and stac-asset.
+---
 
-## Method
-The project utilizes a "Spiral Approach" to algorithm design, starting with a baseline model and iterating to a deeper architecture:
+### Performance Metrics
+| Metric | Baseline (Bicubic) | Baseline (SRCNN) | **Optimized VDSR (Final)** |
+| :--- | :--- | :--- | :--- |
+| **PSNR** | ~19.50 dB | 19.89 dB | **20.09 dB** |
+| **SSIM** | 0.5800 | 0.6208 | **0.6635** |
 
-SRCNN (Super-Resolution Convolutional Neural Network): Used as an initial baseline to establish proof-of-concept for upscaling SAR patches.
+---
 
-VDSR (Very Deep Super Resolution): The primary model used in the final iterations. VDSR uses a deep 9-layer convolutional architecture with residual learning. Instead of predicting the entire high-resolution image directly, the model learns to predict the "residual" (the missing high-frequency sharp details) and adds it back to a bicubic-upscaled low-resolution input.
+### Project Structure (Notebook Phases)
+* **Phase 1:** Environment Setup - Dependency installation and API connection.
+* **Phase 2:** Metadata Pipeline - Parallel extraction of STAC metadata via multi-threading.
+* **Phase 3:** Data Retrieval - Spatiotemporal filtering and raw TIFF normalization (DN to dB).
+* **Phase 4:** Baseline Establishment - Implementation of a 3-layer SRCNN.
+* **Phase 5:** Advanced Architecture - Development of the Residual VDSR model.
+* **Phase 6:** Data Engineering - Dense overlapping patch extraction and SAR-safe augmentation analysis.
+* **Phase 7:** Optimization - The "Goldilocks" training run using L1 + SSIM loss.
+* **Phase 8:** Evaluation - Visual validation and full-scene AI enhancement.
 
-## Data Preprocessing
-SAR data requires careful preprocessing before feeding it into a neural network to prevent vanishing gradients or uniform blank outputs:Radiometric Calibration: Raw Digital Numbers (DN) are scaled using a calibration factor.Logarithmic Transformation: Scaled values are converted to decibels (dB) using 20.log_10(scaled_DN) to handle the massive dynamic range of radar backscatter.Normalization: The image is clipped using the 2nd and 98th percentiles to remove extreme outliers, then min-max normalized to a range of (0 , 1).Patching: To manage RAM and increase the dataset size, the large SAR image is sliced into overlapping 128.128 patches.LR/HR Pairing: The High-Resolution (HR) ground truth patches are downsampled using bicubic interpolation (scale factor 2) to create the Low-Resolution (LR) inputs.
+---
 
-## Training
-The model was trained on an 80/20 Train-Validation split using the following parameters:
+### How to Run
+1. Open the project notebook in **Google Colab**.
+2. Ensure GPU acceleration is enabled (**Runtime** -> **Change runtime type** -> **T4 GPU**).
+3. Follow the sequential cells to reproduce the training and evaluation results.
 
-Optimizer: Adam (Initial Learning Rate: 0.001)
+### Data Source
+This project utilizes the [Capella Space Open Data Catalog](https://capella-open-data.s3.us-west-2.amazonaws.com/stac/capella-open-data-ieee-data-contest/collection.json).
+* **Dataset:** IEEE Data Contest (GEO SAR Imagery)
 
-Loss Function: Mean Absolute Error (L1 Loss) was chosen over MSE to encourage sharper edge reconstruction and reduce the blurring effect common in MSE-trained super-resolution models.
+---
 
-Callbacks: ReduceLROnPlateau (factor 0.5, patience 5) to dynamically refine the learning rate when validation loss stagnates, and EarlyStopping (patience 15) to prevent overfitting.
-
-Batch Size: 16
-
-Epochs: Up to 40-50 epochs.
-
-## Results
-The performance of the models was evaluated using two Acceptance Test Procedures (ATPs): PSNR (Peak Signal-to-Noise Ratio) and SSIM (Structural Similarity Index Measure).
-
-Baseline (Single Patch): PSNR: 23.79 dB | SSIM: 0.8427
-
-Improved VDSR (Dataset Patching & Splitting): PSNR: 24.51 dB | SSIM: 0.8643
-
-(Note: Data augmentation using rotations was tested but ultimately degraded performance due to the directional nature of SAR shadows. The un-augmented patched dataset provided the best metrics).
-**Visual Comparison:**
-![VDSR Super Resolution Results](<VDSR Output (AI Prediction).png>)
-## Run the Code
-This project was developed and executed using Google Colab.
-
-Open the .ipynb notebook in Google Colab.
-
-Crucial: Go to Runtime -> Change runtime type and select T4 GPU (or any available GPU). The model will train incredibly slowly on a CPU.
-
-Run the first cell to install the required dependencies (pystac, stac-asset, rasterio, etc.).
-
-Run the cells sequentially to download the Capella STAC data, preprocess the images, define the model, and begin training.
-
-
-
-## Repository
-https://github.com/gabrieldanho9988-sys/SAR-Super-Resolution-Using-AI.git
+**Author:** Gabriel Danho  
+**Course:** Deep Learning  
+**Instructor:** Amit Kumar Mishra
